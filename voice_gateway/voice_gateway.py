@@ -28,6 +28,7 @@ import base64
 import json
 import sys
 import os
+import re
 from loguru import logger
 from datetime import datetime
 import audioop
@@ -297,7 +298,7 @@ class CallSession:
     - Only 3 states: LISTENING, USER_SPEAKING, AI_SPEAKING
     - VAD edge-trigger with HYSTERESIS: 200ms speech start, 240ms silence end
     - TRUE barge-in: User can interrupt AI mid-speech
-    - ECHO PROTECTION: 300ms ignore window after TTS completes
+    - ECHO PROTECTION: 1000ms ignore window after TTS completes
     - ENERGY SANITY: Filter out non-speech noise
     - POST-NOISE COOLDOWN: Brief delay after noise detection
     """
@@ -316,7 +317,7 @@ class CallSession:
     MIN_SPEECH_ENERGY = 30     # Fixed threshold like Vapi (simple and reliable)
     
     # PROTECTION WINDOWS
-    ECHO_IGNORE_MS = 300       # Ignore VAD for 300ms after TTS completes (balanced)
+    ECHO_IGNORE_MS = 1000      # Ignore VAD for 1000ms after TTS completes (prevent echo detection)
     POST_NOISE_COOLDOWN_MS = 150  # Cooldown after noise detection
     
     # WebRTC VAD frame settings
@@ -603,7 +604,7 @@ class CallSession:
         WebRTC VAD speech detection with SANITY CHECKS
         
         Returns True ONLY if:
-        1. Not in echo ignore window (300ms after TTS)
+        1. Not in echo ignore window (1000ms after TTS)
         2. Energy is in valid speech range (not noise/clipping)
         3. WebRTC VAD confirms speech OR energy strongly suggests speech
         """
@@ -2322,33 +2323,57 @@ async def send_ai_response_with_bargein(
     call_id: str
 ) -> float:
     """
-    Send AI audio with BARGE-IN support
+    Send AI audio with BARGE-IN support and STREAMING TTS
     
-    While streaming audio:
-    - Check session.interrupted flag
-    - If True: Stop immediately, user is speaking
-    - NO post-audio sleep!
+    STREAMING OPTIMIZATION:
+    - Split text into sentences
+    - Generate TTS for first sentence IMMEDIATELY
+    - Start playing first sentence while generating rest in parallel
+    - Target: 500-700ms faster response time
     
-    Interruption handling:
-    - Set ai_speech_start_time at start (for grace period)
-    - Check interrupted flag during streaming
-    - Clear pending_ai_text on interrupt (context hygiene)
+    Barge-in handling:
+    - Check session.interrupted flag during streaming
+    - Stop immediately if user interrupts
     """
     try:
-        # Generate speech
-        tts_start = datetime.now()
-        # Pass selected language for Sarvam support
-        lang = getattr(session, "selected_language", "en")
-        sentence_chunks = await tts.generate_speech_streaming(text, language=lang)
-        tts_gen_time = (datetime.now() - tts_start).total_seconds() * 1000
-        logger.info(f"⚡ TTS generated in {tts_gen_time:.0f}ms")
+        import asyncio
         
-        if not sentence_chunks:
-            logger.error("TTS failed to generate audio")
+        # Split text into sentences for streaming
+        lang = getattr(session, "selected_language", "en")
+        sentences = re.split(r'([.!?]+(?:\s+|$))', text)
+        
+        # Reconstruct sentences with punctuation
+        sentence_list = []
+        for i in range(0, len(sentences) - 1, 2):
+            if sentences[i].strip():
+                sentence = sentences[i] + (sentences[i+1] if i+1 < len(sentences) else '')
+                sentence_list.append(sentence.strip())
+        if len(sentences) % 2 == 1 and sentences[-1].strip():
+            sentence_list.append(sentences[-1].strip())
+        
+        if not sentence_list:
+            logger.error("No sentences to generate TTS for")
             return 0.0
         
+        # Generate FIRST sentence immediately
+        tts_start = datetime.now()
+        first_audio = await tts.generate_speech_bytes(sentence_list[0], language=lang)
+        first_gen_time = (datetime.now() - tts_start).total_seconds() * 1000
+        
+        if not first_audio:
+            logger.error("TTS failed for first sentence")
+            return 0.0
+        
+        logger.info(f"⚡ First sentence TTS: {first_gen_time:.0f}ms - STREAMING NOW")
+        
+        # Start generating remaining sentences in parallel (don't wait)
+        remaining_tasks = []
+        for sentence in sentence_list[1:]:
+            if sentence and len(sentence) > 1:
+                task = asyncio.create_task(tts.generate_speech_bytes(sentence, language=lang))
+                remaining_tasks.append((sentence, task))
+        
         # ==================== SET AI SPEECH START TIME (Grace Period) ====================
-        # This marks when AI started speaking so we can ignore VAD for first 300ms
         session.ai_speech_start_time = datetime.now()
         session.interrupt_speech_frames = 0
         session.interrupt_speech_start = None
@@ -2356,8 +2381,11 @@ async def send_ai_response_with_bargein(
         
         total_duration = 0.0
         
+        # Stream FIRST sentence immediately (already generated)
+        sentence_chunks = [(sentence_list[0], first_audio)]
+        
+        # Stream first sentence
         for sentence_text, wav_bytes in sentence_chunks:
-            # Check for barge-in before each sentence
             if session.interrupted:
                 logger.info(f"🛑 BARGE-IN: Stopping TTS mid-stream")
                 break
@@ -2387,7 +2415,6 @@ async def send_ai_response_with_bargein(
             chunk_size = int(TWILIO_SAMPLE_RATE * 0.02)
             
             for i in range(0, len(audio_mulaw), chunk_size):
-                # Check barge-in during streaming
                 if session.interrupted:
                     logger.info("🛑 BARGE-IN during chunk streaming")
                     break
@@ -2404,7 +2431,73 @@ async def send_ai_response_with_bargein(
                 try:
                     await websocket.send_text(json.dumps(message))
                 except Exception as ws_error:
-                    logger.warning(f"WebSocket send failed (connection closed?): {ws_error}")
+                    logger.warning(f"WebSocket send failed: {ws_error}")
+                    return total_duration
+            
+            if session.interrupted:
+                break
+            
+            sentence_duration = len(audio_mulaw) / TWILIO_SAMPLE_RATE
+            total_duration += sentence_duration
+            logger.debug(f"Sent sentence: {sentence_duration:.2f}s")
+        
+        # Now stream REMAINING sentences as they're generated
+        for sentence_text, task in remaining_tasks:
+            if session.interrupted:
+                # Cancel pending tasks
+                for _, t in remaining_tasks:
+                    if not t.done():
+                        t.cancel()
+                break
+            
+            # Wait for this sentence's TTS to complete
+            try:
+                wav_bytes = await task
+            except Exception as e:
+                logger.error(f"TTS generation failed for sentence: {e}")
+                continue
+            
+            if not wav_bytes:
+                logger.warning(f"Empty audio for: {sentence_text[:30]}")
+                continue
+            
+            logger.debug(f"Streaming: {sentence_text[:30]}...")
+            
+            # Convert and stream (same as above)
+            wav_buffer = io.BytesIO(wav_bytes)
+            with wave.open(wav_buffer, 'rb') as wav:
+                channels = wav.getnchannels()
+                sample_width = wav.getsampwidth()
+                framerate = wav.getframerate()
+                audio_pcm = wav.readframes(wav.getnframes())
+            
+            if framerate != TWILIO_SAMPLE_RATE:
+                audio_pcm, _ = audioop.ratecv(audio_pcm, sample_width, channels, framerate, TWILIO_SAMPLE_RATE, None)
+            
+            if channels == 2:
+                audio_pcm = audioop.tomono(audio_pcm, sample_width, 1, 1)
+            
+            audio_mulaw = audioop.lin2ulaw(audio_pcm, sample_width)
+            chunk_size = int(TWILIO_SAMPLE_RATE * 0.02)
+            
+            for i in range(0, len(audio_mulaw), chunk_size):
+                if session.interrupted:
+                    logger.info("🛑 BARGE-IN during streaming")
+                    break
+                
+                chunk = audio_mulaw[i:i + chunk_size]
+                payload = base64.b64encode(chunk).decode('utf-8')
+                
+                message = {
+                    "event": "media",
+                    "streamSid": session.stream_sid,
+                    "media": {"payload": payload}
+                }
+                
+                try:
+                    await websocket.send_text(json.dumps(message))
+                except Exception as ws_error:
+                    logger.warning(f"WebSocket send failed: {ws_error}")
                     return total_duration
             
             if session.interrupted:
@@ -2415,9 +2508,8 @@ async def send_ai_response_with_bargein(
             logger.debug(f"Sent sentence: {sentence_duration:.2f}s")
         
         # ==================== SET ECHO PROTECTION WINDOW ====================
-        # This is CRITICAL: Mark when TTS finished so VAD ignores echo for 300ms
         session.tts_end_time = datetime.now()
-        logger.debug(f"🔇 Echo protection window started (300ms)")
+        logger.debug(f"🔇 Echo protection window started (1000ms)")
         
         if session.interrupted:
             logger.info(f"⚡ AI speech interrupted after {total_duration:.1f}s")
@@ -2428,7 +2520,6 @@ async def send_ai_response_with_bargein(
         
     except Exception as e:
         logger.error(f"Error in send_ai_response_with_bargein: {e}", exc_info=True)
-        # Still set echo protection even on error
         session.tts_end_time = datetime.now()
         return 0.0
 
