@@ -3,6 +3,7 @@ import { Upload, UserPlus, Trash2, Search, AlertCircle } from 'lucide-react';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../config';
 
 const COUNTRY_CODES = [
   { code: '+1', country: 'US', flag: '🇺🇸' },
@@ -55,7 +56,7 @@ export default function Contacts() {
 
   async function fetchContacts() {
     try {
-      const response = await fetch(`/api/contacts?user_id=${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/contacts?user_id=${userId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
         }
@@ -175,7 +176,7 @@ export default function Contacts() {
     if (!confirm('Are you sure you want to delete this contact?')) return;
 
     try {
-      const response = await fetch(`/api/contacts/${contactId}`, {
+      const response = await fetch(`${API_BASE_URL}/contacts/${contactId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
@@ -195,7 +196,7 @@ export default function Contacts() {
 
     for (const contactId of selectedContacts) {
       try {
-        await fetch(`/api/contacts/${contactId}`, {
+        await fetch(`${API_BASE_URL}/contacts/${contactId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`

@@ -60,15 +60,27 @@ async def get_dashboard_stats(
 ):
     """Get aggregated dashboard statistics for the current user"""
     try:
-        # Fetch all user's calls - only columns that exist in schema
+        # Fetch all user's calls
         response = db.client.table("calls")\
-            .select("id, status, created_at, duration, metadata")\
+            .select("id, status, created_at, duration")\
             .eq("user_id", user_id)\
             .order("created_at", desc=True)\
             .limit(100)\
             .execute()
         
         calls = response.data if response.data else []
+        
+        # Fetch all call analyses for these calls
+        call_ids = [call["id"] for call in calls]
+        analyses = {}
+        if call_ids:
+            analysis_response = db.client.table("call_analysis")\
+                .select("call_id, outcome, user_sentiment, confidence_score")\
+                .in_("call_id", call_ids)\
+                .execute()
+            
+            for analysis in (analysis_response.data or []):
+                analyses[analysis["call_id"]] = analysis
         
         # Calculate stats
         today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -85,22 +97,23 @@ async def get_dashboard_stats(
                 if call_date >= today:
                     today_calls += 1
             
-            # Process metadata for completed calls
-            if call.get("status") == "completed":
-                metadata = call.get("metadata", {})
-                sentiment = metadata.get("sentiment", "").lower() if isinstance(metadata, dict) else ""
+            # Get analysis data if exists
+            call_id = call["id"]
+            analysis = analyses.get(call_id)
+            
+            if analysis:
+                outcome = analysis.get("outcome", "").lower()
+                sentiment = analysis.get("user_sentiment", "").lower()
                 
-                # Estimate interest from sentiment (simple heuristic)
-                if sentiment in ["positive", "very_positive"]:
+                # Count interested/not interested based on outcome
+                if outcome == "interested":
                     interested_count += 1
-                elif sentiment in ["negative", "very_negative"]:
+                elif outcome == "not_interested":
                     not_interested_count += 1
                 
-                # Calculate confidence based on call duration
-                duration = call.get("duration", 0)
-                if duration and duration > 0:
-                    # Longer calls = higher confidence (max at 120 seconds)
-                    confidence = min(1.0, duration / 120.0)
+                # Use actual confidence score if available
+                confidence = analysis.get("confidence_score")
+                if confidence and isinstance(confidence, (int, float)):
                     confidence_sum += confidence
                     confidence_count += 1
         
@@ -122,7 +135,7 @@ async def get_dashboard_stats(
         }
 
 
-@router.get("/api/analytics")
+@router.get("/analytics")
 async def get_analytics(
     days: int = 7,
     user_id: str = Depends(get_current_user_id),
@@ -141,13 +154,25 @@ async def get_analytics(
         
         # Fetch calls within date range
         response = db.client.table("calls")\
-            .select("id, status, created_at, duration, metadata")\
+            .select("id, status, created_at, duration")\
             .eq("user_id", user_id)\
             .gte("created_at", start_date.isoformat())\
             .order("created_at", desc=False)\
             .execute()
         
         calls = response.data if response.data else []
+        
+        # Fetch all call analyses for these calls
+        call_ids = [call["id"] for call in calls]
+        analyses = {}
+        if call_ids:
+            analysis_response = db.client.table("call_analysis")\
+                .select("call_id, outcome, user_sentiment")\
+                .in_("call_id", call_ids)\
+                .execute()
+            
+            for analysis in (analysis_response.data or []):
+                analyses[analysis["call_id"]] = analysis
         
         # Initialize data structures
         daily_counts = {}
@@ -196,19 +221,25 @@ async def get_analytics(
                 total_duration += duration
                 duration_count += 1
             
-            # Outcome distribution (from metadata)
+            # Outcome distribution from call_analysis table
+            call_id = call["id"]
+            analysis = analyses.get(call_id)
+            
             if status == "completed":
-                metadata = call.get("metadata", {})
-                if isinstance(metadata, dict):
-                    sentiment = metadata.get("sentiment", "").lower()
-                    outcome = metadata.get("outcome", "").lower()
+                if analysis:
+                    outcome = analysis.get("outcome", "").lower()
                     
-                    if sentiment in ["positive", "very_positive"] or outcome == "interested":
+                    if outcome == "interested":
                         outcome_distribution["interested"] += 1
-                    elif sentiment in ["negative", "very_negative"] or outcome == "not_interested":
+                    elif outcome == "not_interested":
                         outcome_distribution["notInterested"] += 1
+                    elif outcome in ["no_answer", "busy"]:
+                        outcome_distribution["noAnswer"] += 1
                     else:
                         outcome_distribution["other"] += 1
+                else:
+                    # No analysis yet - mark as other
+                    outcome_distribution["other"] += 1
             elif status in ["no-answer", "busy"]:
                 outcome_distribution["noAnswer"] += 1
         

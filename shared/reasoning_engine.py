@@ -66,32 +66,38 @@ Perform deep reasoning:
         - Recommend follow-up actions
         - Identify patterns
         """
-        analysis_prompt = (
-            f"""Analyze this phone call deeply as a business analyst.
+        # Build prompt safely using list concatenation to avoid syntax errors from embedded quotes
+        prompt_parts = [
+            "Analyze this phone call and return a JSON object with the following fields:",
+            f"AGENT PURPOSE: {agent_config.get('name', 'Unknown')}",
+            "",
+            "TRANSCRIPT:",
+            transcript,
+            "",
+            "Return strictly valid JSON (no markdown formatting) with this schema:",
+            "{",
+            '    "summary": "Concise 2-3 sentence summary of the call",',
+            '    "outcome": "One of: Interested, Not Interested, Follow-up, Voicemail, Completed",',
+            '    "sentiment": "One of: Positive, Neutral, Negative",',
+            '    "confidence_score": 0.95,  // Float 0.0-1.0 representing lead quality/interest',
+            '    "key_points": ["Point 1", "Point 2", "Point 3"],',
+            '    "next_action": "Recommended next step (e.g. \'Send SMS\', \'None\')"',
+            "}"
+        ]
+        analysis_prompt = "\n".join(prompt_parts)
 
-AGENT PURPOSE: {agent_config.get('name', 'Unknown')}
-
-TRANSCRIPT:
-{transcript}
-
-Perform deep reasoning:
-
-1. USER INTENT ANALYSIS:
-    - What was the user's primary goal?
-    - Were there hidden objections or concerns?
-    - What motivated them to engage (or not)?
-
-2. LEAD QUALITY:
-    - How qualified is this lead? (Describe, do not score numerically)
-    - Likelihood to convert?
-    - Budget/authority/need/timeline signals?
-
-3. CONVERSATION QUALITY:
-    - Did the AI handle objections well?
-    - Were there any missed opportunities?
+        messages = [{"role": "user", "content": analysis_prompt}]
+        response = await self.reasoning_llm.generate_response(
+            messages=messages,
+            system_prompt="You are a precise business analyst API. Output ONLY valid JSON.",
+            temperature=0.2,
+            max_tokens=500
+        )
         
         try:
-            analysis = json.loads(response)
+            # Clean up potential markdown code blocks
+            clean_response = response.replace("```json", "").replace("```", "").strip()
+            analysis = json.loads(clean_response)
             logger.info(f"🧠 Deep analysis complete: {analysis}")
             return analysis
         except Exception as exc:
@@ -125,8 +131,8 @@ Perform deep reasoning:
                 pass
             
             logger.error(f"Failed to extract valid JSON from Qwen response")
-            return {"error": "Analysis parsing failed", "raw": response[:500]}{analysis}")
-                            return analysis
+            return {"error": "Analysis parsing failed", "raw": response[:500]}
+            
     async def rag_knowledge_search(
         self,
         query: str,
@@ -142,13 +148,11 @@ Perform deep reasoning:
         - Return structured answer
         """
         # Get knowledge base entries
-        kb_results = await db.search_knowledge(agent_id, query, limit=5)
-        
-        if not kb_results:
-            return {"answer": None, "sources": [], "confidence": 0.0}o traditional search: {e}")
-        
-        # Fallback to traditional PostgreSQL full-text search
-        kb_results = await db.search_knowledge(agent_id, query, limit=5)
+        try:
+            kb_results = await db.search_knowledge(agent_id, query, limit=5)
+        except Exception as e:
+            logger.error(f"Failed to do search: {e}")
+            kb_results = []
         
         if not kb_results:
             return {"answer": None, "sources": [], "confidence": 0.0}
@@ -159,29 +163,33 @@ Perform deep reasoning:
             for i, kb in enumerate(kb_results)
         ])
         
-        rag_prompt = f"""You are a knowledge base expert. Answer the question using ONLY the provided sources.
-
-QUESTION: {query}
-
-CONTEXT: {context if context else "None"}
-
-AVAILABLE KNOWLEDGE:
-{kb_context}
-
-Tasks:
-1. Find the most relevant information
-2. Synthesize a clear, accurate answer
-3. If multiple sources conflict, note that
-4. If no sources answer the question, say so
-
-Return JSON:
-{{
-  "answer": "",
-  "confidence": 0.0,
-  "sources_used": [],
-  "conflicting_info": false,
-  "needs_clarification": false
-}}"""
+        # Build prompt safely
+        prompt_parts = [
+            "You are a knowledge base expert. Answer the question using ONLY the provided sources.",
+            "",
+            f"QUESTION: {query}",
+            "",
+            f"CONTEXT: {context if context else 'None'}",
+            "",
+            "AVAILABLE KNOWLEDGE:",
+            kb_context,
+            "",
+            "Tasks:",
+            "1. Find the most relevant information",
+            "2. Synthesize a clear, accurate answer",
+            "3. If multiple sources conflict, note that",
+            "4. If no sources answer the question, say so",
+            "",
+            "Return JSON:",
+            "{",
+            '  "answer": "",',
+            '  "confidence": 0.0,',
+            '  "sources_used": [],',
+            '  "conflicting_info": false,',
+            '  "needs_clarification": false',
+            "}"
+        ]
+        rag_prompt = "\n".join(prompt_parts)
         
         messages = [{"role": "user", "content": rag_prompt}]
         response = await self.reasoning_llm.generate_response(
@@ -209,25 +217,29 @@ Return JSON:
         The reasoning model writes the smart instructions
         The IVR model (Groq) executes them fast
         """
-        prompt_gen = f"""You are a prompt engineering expert. Generate an optimized system prompt for a phone call AI.
-
-BASE AGENT PURPOSE:
-{agent_base_prompt}
-
-CURRENT CONTEXT:
-- Call count today: {context.get('calls_today', 0)}
-- Recent outcomes: {context.get('recent_outcomes', [])}
-- User history: {context.get('user_history', 'None')}
-- Time of day: {context.get('time_of_day', 'Unknown')}
-
-Generate a SHORT, CLEAR, ACTIONABLE prompt that:
-1. Maintains the core agent purpose
-2. Adapts to context (e.g., busy times → be concise)
-3. Handles likely objections based on recent calls
-4. Includes specific examples if needed
-5. Is optimized for FAST execution (Groq will run it)
-
-Return ONLY the prompt text (no JSON, no explanation):"""
+        # Build prompt safely
+        prompt_parts = [
+            "You are a prompt engineering expert. Generate an optimized system prompt for a phone call AI.",
+            "",
+            "BASE AGENT PURPOSE:",
+            agent_base_prompt,
+            "",
+            "CURRENT CONTEXT:",
+            f"- Call count today: {context.get('calls_today', 0)}",
+            f"- Recent outcomes: {context.get('recent_outcomes', [])}",
+            f"- User history: {context.get('user_history', 'None')}",
+            f"- Time of day: {context.get('time_of_day', 'Unknown')}",
+            "",
+            "Generate a SHORT, CLEAR, ACTIONABLE prompt that:",
+            "1. Maintains the core agent purpose",
+            "2. Adapts to context (e.g., busy times -> be concise)",
+            "3. Handles likely objections based on recent calls",
+            "4. Includes specific examples if needed",
+            "5. Is optimized for FAST execution (Groq will run it)",
+            "",
+            "Return ONLY the prompt text (no JSON, no explanation):"
+        ]
+        prompt_gen = "\n".join(prompt_parts)
         
         messages = [{"role": "user", "content": prompt_gen}]
         dynamic_prompt = await self.reasoning_llm.generate_response(
@@ -253,28 +265,32 @@ Return ONLY the prompt text (no JSON, no explanation):"""
         - Schedule callback?
         - Update CRM?
         """
-        decision_prompt = f"""Make workflow decisions based on this call analysis:
-
-CALL ANALYSIS:
-{json.dumps(call_analysis, indent=2)}
-
-AGENT CONFIG:
-{json.dumps(agent_config, indent=2)}
-
-Decide which workflows should trigger:
-- send_sms: Send follow-up SMS
-- send_email: Send email with details
-- human_handoff: Transfer to human agent
-- schedule_callback: Schedule a callback
-- update_crm: Update CRM with lead info
-- send_calendar: Send calendar invite
-- none: No action needed
-
-Return JSON array of workflow IDs:
-{{
-  "workflows": ["workflow1", "workflow2"],
-  "reasoning": ""
-}}"""
+        # Build prompt safely
+        prompt_parts = [
+            "Make workflow decisions based on this call analysis:",
+            "",
+            "CALL ANALYSIS:",
+            json.dumps(call_analysis, indent=2),
+            "",
+            "AGENT CONFIG:",
+            json.dumps(agent_config, indent=2),
+            "",
+            "Decide which workflows should trigger:",
+            "- send_sms: Send follow-up SMS",
+            "- send_email: Send email with details",
+            "- human_handoff: Transfer to human agent",
+            "- schedule_callback: Schedule a callback",
+            "- update_crm: Update CRM with lead info",
+            "- send_calendar: Send calendar invite",
+            "- none: No action needed",
+            "",
+            "Return JSON array of workflow IDs:",
+            "{",
+            '  "workflows": ["workflow1", "workflow2"],',
+            '  "reasoning": ""',
+            "}"
+        ]
+        decision_prompt = "\n".join(prompt_parts)
         
         messages = [{"role": "user", "content": decision_prompt}]
         response = await self.reasoning_llm.generate_response(
@@ -300,23 +316,27 @@ Return JSON array of workflow IDs:
         """
         Score lead quality 0-100 using reasoning model
         """
-        score_prompt = f"""Score this lead from 0-100:
-
-TRANSCRIPT:
-{transcript}
-
-METADATA:
-{json.dumps(metadata, indent=2)}
-
-Consider:
-- Budget signals
-- Authority (decision maker?)
-- Need (urgent vs nice-to-have)
-- Timeline (when do they need it)
-- Engagement level
-- Objections raised
-
-Return ONLY a number 0-100:"""
+        # Build prompt safely
+        prompt_parts = [
+            "Score this lead from 0-100:",
+            "",
+            "TRANSCRIPT:",
+            transcript,
+            "",
+            "METADATA:",
+            json.dumps(metadata, indent=2),
+            "",
+            "Consider:",
+            "- Budget signals",
+            "- Authority (decision maker?)",
+            "- Need (urgent vs nice-to-have)",
+            "- Timeline (when do they need it)",
+            "- Engagement level",
+            "- Objections raised",
+            "",
+            "Return ONLY a number 0-100:"
+        ]
+        score_prompt = "\n".join(prompt_parts)
         
         messages = [{"role": "user", "content": score_prompt}]
         response = await self.reasoning_llm.generate_response(

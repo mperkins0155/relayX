@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Phone, Calendar, User, FileText, Clock, Save, Check, AlertCircle, Users, ChevronDown, Plus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { API_BASE_URL } from '../../config';
 
 interface NewCallModalProps {
   isOpen: boolean;
@@ -97,7 +98,7 @@ export default function NewCallModal({ isOpen, onClose, onSuccess }: NewCallModa
 
     try {
       // Fetch contacts from backend API
-      const response = await fetch(`/api/contacts?user_id=${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/contacts?user_id=${userId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
         }
