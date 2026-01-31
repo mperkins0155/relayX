@@ -88,6 +88,7 @@ allowed_origins = [
     "https://relayx.tech",
     "https://www.relayx.tech",
     "https://relay-x.vercel.app",
+    "https://relayx-wine.vercel.app",
 ]
 
 app.add_middleware(
