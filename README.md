@@ -1,17 +1,52 @@
-# RelayX - AI-Powered Voice Calling Platform 🚀
+<div align="center">
+
+# 🤖 RelayX
+### AI-Powered Voice Calling Platform at Scale
+
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-relayx--wine.vercel.app-blue?style=for-the-badge)](https://relayx-wine.vercel.app)
+[![API Status](https://img.shields.io/badge/🟢_API-Healthy-success?style=for-the-badge)](https://api.relayx.tech/health)
+[![Made with Love](https://img.shields.io/badge/Made_with-❤️-red?style=for-the-badge)](https://relayx-wine.vercel.app)
+
+**Transform your business communication with AI agents that call, qualify, and schedule at scale**
+
+[🚀 Try Demo](#-product-demo) • [📖 Documentation](#-getting-started) • [💡 Features](#-key-features) • [🛠️ Tech Stack](#️-technology-stack)
+
+</div>
+
+---
 
 ## 🎯 Overview
 
+> **Make 1000s of personalized AI voice calls simultaneously. No humans needed.**
+
 RelayX is an intelligent voice calling platform that automates business communications using AI. It enables businesses to make thousands of personalized voice calls simultaneously, leveraging advanced AI for natural conversations, appointment scheduling, and lead qualification.
 
-**Problem it solves:**
-- Manual calling is time-consuming and expensive
-- Businesses lose customers due to delayed follow-ups
-- Limited scalability with human agents
-- Inconsistent call quality and messaging
+### 🔥 Problem → Solution
 
-**Solution:**
-RelayX provides an AI agent that makes hyper-personalized calls at scale, understands context from your knowledge base, schedules appointments automatically, and handles conversations naturally in multiple Indian languages.
+<table>
+<tr>
+<td width="50%">
+
+**❌ Problems**
+- ⏰ Manual calling is time-consuming
+- 💸 High cost per call
+- 📉 Delayed follow-ups lose customers
+- 👥 Limited scalability with humans
+- 🎭 Inconsistent messaging
+
+</td>
+<td width="50%">
+
+**✅ RelayX Solution**
+- 🤖 AI makes 1000s of calls simultaneously
+- 💰 ₹8 per call (10x cheaper)
+- ⚡ Instant follow-ups, zero delays
+- 📈 Infinite scalability
+- 🎯 Consistent, optimized messaging
+
+</td>
+</tr>
+</table>
 
 ---
 
@@ -28,6 +63,34 @@ RelayX transforms business outreach by:
 ---
 
 ## 🛠️ Technology Stack
+
+<div align="center">
+
+### Frontend
+![React](https://img.shields.io/badge/React_18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+
+### Backend
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python_3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
+
+### AI & Voice
+![Groq](https://img.shields.io/badge/Groq_LLM-FF6B00?style=for-the-badge&logo=ai&logoColor=white)
+![Twilio](https://img.shields.io/badge/Twilio-F22F46?style=for-the-badge&logo=twilio&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-121212?style=for-the-badge&logo=chainlink&logoColor=white)
+
+### Deployment
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
+![Railway](https://img.shields.io/badge/Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white)
+
+</div>
+
+<details>
+<summary><b>📦 Complete Tech Stack Details</b></summary>
 
 ### Frontend
 - **React 18** + **TypeScript** - Modern UI framework
@@ -57,24 +120,37 @@ RelayX transforms business outreach by:
 - **Sarvam Bulbul** - Indian language TTS
 - **Sarvam Saarika** - Indian language STT
 
+</details>
+
 ---
 
 ## 🎥 Product Demo
 
-**🔗 Live App:** [https://relayx-wine.vercel.app](https://relayx-wine.vercel.app)
+<div align="center">
 
-**🔗 Backend API:** [https://api.relayx.tech/health](https://api.relayx.tech/health)
+### 🌟 **[Try Live Demo →](https://relayx-wine.vercel.app)** 🌟
+
+[![Demo Screenshot](https://img.shields.io/badge/🎬_Watch_Demo-Click_Here-blue?style=for-the-badge&logo=youtube)](https://relayx-wine.vercel.app)
 
 **Test Credentials:**
-- Email: `test@relayx.ai`
-- Password: `test123`
+```
+📧 Email: test@relayx.ai
+🔐 Password: test123
+```
 
-### Key Features to Try:
-1. **Dashboard**: View analytics and call stats
-2. **AI Agent**: Configure your voice agent personality and knowledge base
-3. **Campaigns**: Upload CSV and launch bulk calling campaigns
-4. **Contacts**: Manage your contact database
-5. **Test Call**: Make a test call to see AI in action
+</div>
+
+### ✨ What You Can Try:
+
+| Feature | Description |
+|---------|-------------|
+| 📊 **Dashboard** | View real-time analytics and call statistics |
+| 🤖 **AI Agent** | Configure voice agent personality and knowledge base |
+| 📞 **Campaigns** | Upload CSV and launch bulk calling campaigns |
+| 👥 **Contacts** | Manage your contact database |
+| 🎙️ **Test Call** | Make a test call to experience AI in action |
+
+**🔗 Backend API Health Check:** [api.relayx.tech/health](https://api.relayx.tech/health)
 
 ---
 
@@ -106,7 +182,7 @@ RelayX transforms business outreach by:
 - Cost per successful call
 
 ### 5. Multi-Language Support
-- English and Hindi natively supported
+- English, Hindi and Marathi natively supported
 - Additional Indian languages via Sarvam AI
 - Automatic language detection
 - Code-mixing support (Hinglish)
@@ -198,4 +274,4 @@ For inquiries: [Contact through the platform](https://relayx-wine.vercel.app)
 
 ---
 
-**Made with ❤️ for businesses that want to scale their communication**
+**Made with intent for businesses that want to scale their communication**
