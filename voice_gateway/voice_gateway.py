@@ -1846,8 +1846,34 @@ VOICE FORMATTING:
         logger.error(f"WebSocket error for call {call_id}: {e}", exc_info=True)
     
     finally:
-        if session and session.stream_sid in active_sessions:
-            del active_sessions[session.stream_sid]
+        if session:
+            if session.stream_sid in active_sessions:
+                del active_sessions[session.stream_sid]
+            
+            # ==================== BACKUP DATA SAVE (Fix for NaN/N/A) ====================
+            # Ensure call is marked completed and analysis generated even if Twilio webhook fails
+            try:
+                # Check if call is still technically "in-progress" or "initiated"
+                current_call = await db.get_call(call_id)
+                current_status = current_call.get("status") if current_call else None
+                
+                if current_status not in ["completed", "failed", "busy", "no-answer", "canceled"]:
+                    duration = int((datetime.now() - session.created_at).total_seconds())
+                    logger.info(f"🔒 Backup: Marking call {call_id} as completed (Duration: {duration}s)")
+                    
+                    await db.update_call(
+                        call_id, 
+                        status="completed", 
+                        ended_at=datetime.now(), 
+                        duration=duration
+                    )
+                    
+                    # Generate analysis immediately
+                    logger.info(f"📊 Generating analysis for {call_id} (Backup)")
+                    await generate_call_analysis(call_id, db)
+            except Exception as e:
+                logger.error(f"Error in backup call completion: {e}")
+
         logger.info(f"WebSocket closed for call {call_id}")
         try:
             await websocket.close()
@@ -2034,8 +2060,26 @@ async def process_user_speech_fast(
                 session.language_verified = True
                 
                 lang_instruction = {
-                    "hi": "The user speaks HINDI. You MUST reply in HINDI only. Use Devanagari script.",
-                    "mr": "The user speaks MARATHI. You MUST reply in MARATHI only. Use Devanagari script.",
+                    "hi": """The user speaks HINDI. You MUST reply in HINDI only using Devanagari script.
+
+LANGUAGE STYLE - MODERN CONVERSATIONAL HINDI:
+- Speak like today's urban Hindi speakers - mix Hindi with common English words naturally
+- Use English words for: AI, technology, demo, call, team, business, service, app, system, online, email
+- Examples: "AI calls", "demo देखना चाहेंगे?", "team कितनी busy है?", "online booking system"
+- DON'T translate: AI (एआई❌), technology (तकनीक❌), demo (प्रदर्शन❌), app (ऐप्लिकेशन❌)
+- DO use: "AI se आप अपने calls automate कर सकते हैं" (natural Hindi-English mix)
+- Sound like a modern Indian professional, not a Hindi textbook""",
+                    
+                    "mr": """The user speaks MARATHI. You MUST reply in MARATHI only using Devanagari script.
+
+LANGUAGE STYLE - MODERN CONVERSATIONAL MARATHI:
+- Speak like today's urban Marathi speakers - mix Marathi with common English words naturally
+- Use English words for: AI, technology, demo, call, team, business, service, app, system, online, email
+- Examples: "AI calls", "demo पाहायला आवडेल का?", "team किती busy आहे?", "online booking system"
+- DON'T translate: AI (एआय❌), technology (तंत्रज्ञान❌), demo (प्रात्यक्षिक❌), app (अनुप्रयोग❌)
+- DO use: "AI च्या मदतीने तुम्ही calls automate करू शकता" (natural Marathi-English mix)
+- Sound like a modern Mumbaikar professional, not a Marathi textbook""",
+                    
                     "en": "The user speaks ENGLISH."
                 }
                 

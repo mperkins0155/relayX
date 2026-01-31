@@ -295,11 +295,62 @@ async def get_call_analysis(call_id: str, db: SupabaseDB = Depends(get_db)):
         if not analysis:
             return {"message": "No analysis available for this call"}
         
+        # Map user_sentiment to sentiment for frontend compatibility
+        if "user_sentiment" in analysis:
+            analysis["sentiment"] = analysis["user_sentiment"]
+        
+        # Add confidence_score if not present (default to 0.5 for neutral)
+        if "confidence_score" not in analysis:
+            analysis["confidence_score"] = 0.5
+        
         return analysis
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching call analysis: {e}")
+        logger.error(f"Error fetching analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/calls/{call_id}/recording")
+async def get_call_recording(
+    call_id: str, 
+    user_id: str = Depends(get_current_user_id),
+    db: SupabaseDB = Depends(get_db)
+):
+    """
+    Proxy the audio recording from Twilio/Storage to the frontend.
+    This avoids CORS issues and exposes a clean authenticated endpoint.
+    """
+    try:
+        # 1. Verify ownership
+        result = db.client.table("calls").select("recording_url").eq("id", call_id).eq("user_id", user_id).execute()
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Call not found")
+        
+        recording_url = result.data[0].get("recording_url")
+        if not recording_url:
+            raise HTTPException(status_code=404, detail="Recording not available")
+
+        # 2. Stream the file
+        import httpx
+        from fastapi.responses import StreamingResponse
+        
+        # Determine if it's a Twilio URL (needs auth?) or public S3
+        # For now, we assume public or standard usage. 
+        # If it's Twilio and private, we would inject TWILIO_ACCOUNT_SID/TOKEN here.
+        
+        async def iterfile():
+            async with httpx.AsyncClient() as client:
+                async with client.stream("GET", recording_url) as r:
+                    async for chunk in r.aiter_bytes():
+                        yield chunk
+                        
+        return StreamingResponse(iterfile(), media_type="audio/mpeg")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error proxying recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -322,33 +373,6 @@ async def update_call(call_id: str, update: CallUpdate, db: SupabaseDB = Depends
         raise
     except Exception as e:
         logger.error(f"Error updating call: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/calls/{call_id}/recording")
-@router.head("/calls/{call_id}/recording")
-async def get_call_recording(call_id: str, db: SupabaseDB = Depends(get_db)):
-    """
-    Get recording metadata for a call (supports HEAD for existence check)
-    """
-    try:
-        call = await db.get_call(call_id)
-        if not call:
-            raise HTTPException(status_code=404, detail="Call not found")
-        
-        recording_url = call.get("recording_url")
-        if not recording_url:
-            return {"message": "No recording available for this call"}
-        
-        return {
-            "has_recording": True,
-            "recording_duration": call.get("recording_duration"),
-            "call_id": call_id
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

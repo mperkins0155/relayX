@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Clock, Users, Calendar, RefreshCw } from 'lucide-react';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config';
 
 interface AnalyticsData {
     dailyCalls: { date: string; count: number; completed: number; failed: number }[];
@@ -36,7 +37,7 @@ export default function Analytics() {
     async function fetchAnalytics() {
         try {
             setLoading(true);
-            const response = await fetch(`/api/analytics?days=${dateRange}`, {
+            const response = await fetch(`${API_BASE_URL}/analytics?days=${dateRange}`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
                 }
