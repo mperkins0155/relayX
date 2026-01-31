@@ -10,6 +10,9 @@ redis==5.0.1
 
 # Audio & STT/TTS
 webrtcvad==2.0.10
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.1.0+cpu
+torchaudio==2.1.0+cpu
 groq==0.36.0
 openai==1.12.0
 numpy==1.26.3

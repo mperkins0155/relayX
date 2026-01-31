@@ -33,6 +33,7 @@ from datetime import datetime
 import audioop
 import tempfile
 import webrtcvad
+import torch
 import numpy as np
 import io
 import wave
@@ -118,6 +119,26 @@ app = FastAPI(
     version="2.0.0"  # Major rewrite with barge-in support
 )
 
+# ==================== SILERO VAD INITIALIZATION (CPU-ONLY, LIGHTWEIGHT) ====================
+# Download and cache the lightweight Silero VAD model (~2-5MB)
+# Configured for CPU to avoid heavy GPU dependencies
+try:
+    torch.set_num_threads(1)  # Limit CPU threads for small device
+    silero_model, silero_utils = torch.hub.load(
+        repo_or_dir='snakers4/silero-vad',
+        model='silero_vad',
+        force_reload=False,  # Use cached model
+        onnx=False,  # Use PyTorch (smaller)
+        trust_repo=True
+    )
+    silero_model.eval()  # Set to evaluation mode
+    (get_speech_timestamps, _, read_audio, *_) = silero_utils
+    logger.info("✅ Silero VAD loaded successfully (CPU-only, ~5MB)")
+except Exception as e:
+    logger.error(f"⚠️ Failed to load Silero VAD: {e}")
+    silero_model = None
+    silero_utils = None
+
 # Add CORS middleware to allow dashboard access
 app.add_middleware(
     CORSMiddleware,
@@ -133,8 +154,9 @@ TWILIO_AUDIO_FORMAT = "mulaw"  # μ-law encoding
 
 # WebRTC VAD (lightweight, <1ms per frame)
 # Mode: 0=Quality, 1=Low Bitrate, 2=Aggressive, 3=Very Aggressive
-# Using mode=3 (Very Aggressive) like Vapi - maximum sensitivity
-vad = webrtcvad.Vad(mode=3)
+# Changed from mode=3 to mode=2 - mode 3 was detecting breathing/noise as continuous speech
+# Mode 2 allows natural pauses to be detected as silence
+vad = webrtcvad.Vad(mode=2)
 
 # Call sessions storage
 active_sessions = {}
@@ -303,7 +325,7 @@ class CallSession:
     
     # Frame counts for hysteresis (at 30ms per frame)
     SPEECH_START_FRAMES = 6    # 6 frames × 30ms = 180ms of speech to trigger (optimized from 8)
-    SPEECH_END_FRAMES = 6      # 6 frames × 30ms = 180ms of silence to end (CRITICAL: was 7-10, caused STT to never trigger)
+    SPEECH_END_FRAMES = 15     # 15 frames × 30ms = 450ms of silence to end (REDUCED from 23/700ms - dynamic per stage)
     
     # BARGE-IN THRESHOLDS (stricter - AI speaking, user wants to interrupt)
     # Require LOUDER and LONGER speech to interrupt the AI
@@ -418,7 +440,95 @@ class CallSession:
         # Call Stage (for context-aware timeouts)
         self.call_stage = CallStage.LANGUAGE_SELECT if self.LANGUAGE_SELECTION_ENABLED else CallStage.OPEN_ENDED
         
+        # ==================== ADAPTIVE USER PATTERNS (Phase 1) ====================
+        # Learn user's speaking patterns for smarter endpointing
+        self.user_pause_history = []  # Track user's natural pause durations
+        self.user_utterance_durations = []  # Track typical response lengths
+        self.user_avg_pause_ms = 500  # Start with 500ms default
+        self.early_stt_enabled = True  # Enable parallel STT processing
+        self.early_stt_attempted = False  # Track if early STT was already tried for this utterance
+        
         logger.info(f"CallSession created: {call_id} | StreamSID: {stream_sid} | Stage: {self.call_stage.value}")
+    
+    def get_dynamic_speech_end_frames(self) -> int:
+        """
+        Smart dual-threshold + adaptive timeout endpointing (Option B).
+        
+        Reduced thresholds to actually trigger speech_end (was never reaching threshold).
+        WebRTC VAD detecting silence but we were waiting too long.
+        """
+        # Calculate buffer duration if available
+        buffer_duration = len(self.audio_buffer) / TWILIO_SAMPLE_RATE if self.audio_buffer else 0.0
+        
+        # Calculate speaking duration if available
+        speaking_duration = 0.0
+        if self.user_speaking_start_time:
+            speaking_duration = (datetime.now() - self.user_speaking_start_time).total_seconds()
+        
+        # Stage-specific logic (REDUCED thresholds so speech_end actually triggers)
+        if self.call_stage == CallStage.LANGUAGE_SELECT:
+            return 6   # 180ms - very quick for "English", "Hindi"
+        
+        elif self.call_stage == CallStage.YES_NO:
+            return 8  # 240ms - quick for "yes", "no"
+        
+        elif self.call_stage == CallStage.SHORT_ANSWER:
+            # Short answer: Use buffer-based threshold
+            if buffer_duration < 1.5:
+                return 10  # 300ms - fast for quick answers
+            else:
+                return 15  # 450ms - patient for longer explanations
+        
+        else:  # OPEN_ENDED
+            # Dual-threshold (REDUCED to actually trigger before 4s timeout)
+            if buffer_duration < 2.0:
+                # Short buffer: Fast response
+                return 10  # 300ms
+            else:
+                # Long buffer: Patient but not too patient
+                # Silero will double-check if this is truly the end
+                if speaking_duration < 6.0:
+                    return 20  # 600ms - patient for complex thoughts
+                else:
+                    return 15  # 450ms - faster for long monologues
+    
+    def detect_intent_completion(self, buffer_pcm: bytes, duration_ms: float) -> tuple[bool, str]:
+        """Detect if speech sounds complete based on prosody (Phase 2)
+        
+        Returns: (is_complete, reason)
+        """
+        if duration_ms < 300:  # Too short to analyze
+            return (False, "too_short")
+        
+        # Analyze energy distribution (falling energy = completion)
+        import audioop
+        try:
+            # Split audio into 3 segments (beginning, middle, end)
+            segment_size = len(buffer_pcm) // 3
+            if segment_size < 100:  # Not enough data
+                return (False, "insufficient_data")
+            
+            start_segment = buffer_pcm[:segment_size]
+            middle_segment = buffer_pcm[segment_size:segment_size*2]
+            end_segment = buffer_pcm[segment_size*2:]
+            
+            # Calculate RMS energy for each segment
+            start_energy = audioop.rms(start_segment, 2)
+            middle_energy = audioop.rms(middle_segment, 2)
+            end_energy = audioop.rms(end_segment, 2)
+            
+            # Pattern 1: Falling energy (statement completion)
+            if end_energy < middle_energy * 0.7 and middle_energy >= start_energy * 0.8:
+                return (True, "falling_energy")
+            
+            # Pattern 2: Consistent low energy at end (pause/thinking)
+            if end_energy < middle_energy * 0.5 and duration_ms > 800:
+                return (True, "sustained_drop")
+            
+            return (False, "no_pattern")
+            
+        except Exception:
+            return (False, "error")
     
     def add_audio_chunk(self, audio_data: bytes):
         """Add audio chunk to buffer"""
@@ -567,6 +677,56 @@ class CallSession:
             # Fallback: stricter energy-based detection
             return 55 < energy < 90
     
+    def detect_speech_silero(self, audio_chunk: bytes) -> float:
+        """
+        Use Silero VAD for more accurate speech probability detection.
+        Returns probability (0.0 to 1.0) that audio contains speech.
+        
+        Silero is better than WebRTC VAD at:
+        - Understanding natural speech pauses (thinking, breathing)
+        - Detecting speech completion vs mid-sentence pauses
+        - Handling varied accents and languages
+        
+        Args:
+            audio_chunk: Raw audio bytes (8kHz mulaw from Twilio)
+        
+        Returns:
+            Speech probability (0.0 = silence, 1.0 = definite speech)
+        """
+        if silero_model is None:
+            # Fallback to WebRTC if Silero not loaded
+            return 0.5
+        
+        try:
+            # Convert mulaw to PCM 16-bit
+            pcm_data = audioop.ulaw2lin(audio_chunk, 2)
+            
+            # Convert to numpy array
+            audio_array = np.frombuffer(pcm_data, dtype=np.int16).astype(np.float32) / 32768.0
+            
+            # Silero expects 16kHz - resample from 8kHz
+            audio_16k = np.repeat(audio_array, 2)  # Simple upsampling
+            
+            # Silero VAD expects exactly 512 samples for 16kHz (32ms chunks)
+            # If we have more, take the last 512 samples; if less, pad with zeros
+            if len(audio_16k) > 512:
+                audio_16k = audio_16k[-512:]  # Last 512 samples (most recent audio)
+            elif len(audio_16k) < 512:
+                audio_16k = np.pad(audio_16k, (0, 512 - len(audio_16k)), mode='constant')
+            
+            # Convert to torch tensor
+            audio_tensor = torch.from_numpy(audio_16k)
+            
+            # Get speech probability (0.0 to 1.0)
+            with torch.no_grad():
+                speech_prob = silero_model(audio_tensor, 16000).item()
+            
+            return speech_prob
+            
+        except Exception as e:
+            logger.error(f"Silero VAD error: {e}")
+            return 0.5  # Neutral fallback
+    
     def update_vad_state(self, is_speech: bool) -> str | None:
         """
         VAD edge-trigger state machine with HYSTERESIS
@@ -607,8 +767,28 @@ class CallSession:
             
             # Check for speech end trigger (only during USER_SPEAKING)
             if self.state == ConversationState.USER_SPEAKING:
-                if self.consecutive_silence_frames >= self.SPEECH_END_FRAMES:
-                    logger.info(f"🔇 VAD: Silence for {self.consecutive_silence_frames} frames ({self.consecutive_silence_frames * 30}ms) - triggering speech_end")
+                # Use Silero VAD for smarter endpointing
+                # Analyze recent audio buffer to check if speech is truly done
+                buffer_duration = len(self.audio_buffer) / TWILIO_SAMPLE_RATE if self.audio_buffer else 0.0
+                
+                # Use dynamic endpointing based on call stage
+                dynamic_end_frames = self.get_dynamic_speech_end_frames()
+                
+                if self.consecutive_silence_frames >= dynamic_end_frames:
+                    # Double-check with Silero: Is this truly the end or just a pause?
+                    if silero_model and buffer_duration > 1.0:
+                        # Analyze last 480ms of buffer with Silero
+                        check_bytes = min(3840, len(self.audio_buffer))  # 480ms = 3840 bytes at 8kHz
+                        recent_audio = bytes(self.audio_buffer[-check_bytes:])
+                        speech_prob = self.detect_speech_silero(recent_audio)
+                        
+                        # If Silero detects speech in recent buffer, user might still be speaking
+                        if speech_prob > 0.4:
+                            logger.debug(f"🔍 Silero: Speech prob {speech_prob:.2f} - user might continue, waiting...")
+                            return None  # Keep waiting
+                    
+                    silence_ms = self.consecutive_silence_frames * 30
+                    logger.info(f"🔇 VAD: Silence for {self.consecutive_silence_frames} frames ({silence_ms}ms) - triggering speech_end [Stage: {self.call_stage.value}, Threshold: {dynamic_end_frames} frames, Buffer: {buffer_duration:.1f}s]")
                     return "speech_end"
         
         return None
@@ -735,7 +915,7 @@ class CallSession:
     
     def update_call_stage(self, ai_question: str = None):
         """
-        Update call stage based on AI's question context.
+        Update call stage based on AI's question context (Phase 2: Enhanced with intent detection).
         Allows dynamic timeout adjustment as conversation progresses.
         """
         if not ai_question:
@@ -743,12 +923,12 @@ class CallSession:
         
         question_lower = ai_question.lower()
         
-        # Detect question type from AI's last response
-        if any(word in question_lower for word in ["english", "hindi", "marathi", "language", "prefer"]):
+        # Detect question type from AI's last response (Phase 2: More patterns)
+        if any(word in question_lower for word in ["english", "hindi", "marathi", "language", "prefer", "भाषा"]):
             self.call_stage = CallStage.LANGUAGE_SELECT
-        elif any(word in question_lower for word in ["yes or no", "yes/no", "confirm", "interested", "okay", "good time"]):
+        elif any(word in question_lower for word in ["yes or no", "yes/no", "confirm", "interested", "okay", "good time", "moment", "available", "हाँ या ना", "क्या आप"]):
             self.call_stage = CallStage.YES_NO
-        elif any(word in question_lower for word in ["name", "email", "phone", "number", "date", "time", "when", "which day"]):
+        elif any(word in question_lower for word in ["name", "email", "phone", "number", "date", "time", "when", "which day", "how many", "नाम", "ईमेल", "फोन", "कब", "कितने"]):
             self.call_stage = CallStage.SHORT_ANSWER
         else:
             self.call_stage = CallStage.OPEN_ENDED
@@ -1576,21 +1756,39 @@ VOICE FORMATTING:
                     if session.state == ConversationState.USER_SPEAKING:
                         session.add_audio_chunk(audio_data)
                         
+                        # ==================== EARLY STT WITH CONFIDENCE VALIDATION (Phase 1) ====================
+                        # For short answer contexts, try STT early (500-600ms) and validate confidence
+                        # Only attempt ONCE per utterance to avoid spam
+                        if session.early_stt_enabled and not session.early_stt_attempted and session.user_speaking_start_time:
+                            speaking_duration = (datetime.now() - session.user_speaking_start_time).total_seconds()
+                            buffer_duration = len(session.audio_buffer) / TWILIO_SAMPLE_RATE
+                            
+                            # Early trigger for short answer contexts (language, yes/no)
+                            if session.call_stage == CallStage.LANGUAGE_SELECT:
+                                # Try at 600ms for language selection ("Hindi", "English")
+                                if 0.6 <= buffer_duration < 0.65 and speaking_duration >= 0.55:
+                                    session.early_stt_attempted = True  # Mark as attempted
+                                    logger.info(f"⚡ EARLY STT ATTEMPT: {buffer_duration:.2f}s buffered [Stage: {session.call_stage.value}]")
+                                    await process_user_speech_fast(session, websocket, stt, llm, tts, db, early_attempt=True)
+                                    if not session.audio_buffer:  # Successfully processed
+                                        continue
+                            elif session.call_stage == CallStage.YES_NO:
+                                # Try at 500ms for yes/no questions
+                                if 0.5 <= buffer_duration < 0.55 and speaking_duration >= 0.45:
+                                    session.early_stt_attempted = True  # Mark as attempted
+                                    logger.info(f"⚡ EARLY STT ATTEMPT: {buffer_duration:.2f}s buffered [Stage: {session.call_stage.value}]")
+                                    await process_user_speech_fast(session, websocket, stt, llm, tts, db, early_attempt=True)
+                                    if not session.audio_buffer:  # Successfully processed
+                                        continue
+                        
                         # ==================== SIMPLE TIMEOUT (VAPI-LIKE) ====================
-                        # Force process if speaking too long without natural pause
+                        # Force process if speaking too long without natural pause (safety net)
                         if session.user_speaking_start_time:
                             speaking_duration = (datetime.now() - session.user_speaking_start_time).total_seconds()
                             buffer_duration = len(session.audio_buffer) / TWILIO_SAMPLE_RATE
                             
-                            # EARLY TRIGGER for language selection (500ms is enough for "Hindi"/"English")
-                            if not session.language_verified and session.LANGUAGE_SELECTION_ENABLED:
-                                if buffer_duration >= 0.5 and speaking_duration >= 0.4:
-                                    logger.info(f"⚡ EARLY PROCESS (Language): {buffer_duration:.1f}s buffered after {speaking_duration:.1f}s speaking")
-                                    await process_user_speech_fast(session, websocket, stt, llm, tts, db)
-                                    continue
-                            
-                            # Force process if speaking > 3s without natural pause (reduced from 4s)
-                            if speaking_duration > 3.0 and buffer_duration > 2.5:
+                            # Force process if speaking > 4s without natural pause (REDUCED from 6s - was causing ~10-20s waits)
+                            if speaking_duration > 4.0 and buffer_duration > 3.5:
                                 logger.warning(f"⏱️ FORCE PROCESS: {speaking_duration:.1f}s speaking, {buffer_duration:.1f}s buffered - processing now")
                                 await process_user_speech_fast(session, websocket, stt, llm, tts, db)
                                 continue
@@ -1600,6 +1798,7 @@ VOICE FORMATTING:
                         # User started speaking (210ms of speech detected)
                         session.state = ConversationState.USER_SPEAKING
                         session.user_speaking_start_time = datetime.now()  # CRITICAL: Required for early trigger
+                        session.early_stt_attempted = False  # Reset for new utterance (Phase 1)
                         session.add_audio_chunk(audio_data)  # Add the triggering audio too
                         logger.info(f"🎤 Speech START detected - state: USER_SPEAKING | Echo window: {session.is_in_echo_window()}")
                     
@@ -1663,7 +1862,8 @@ async def process_user_speech_fast(
     stt: STTClient,
     llm: LLMClient,
     tts: TTSClient,
-    db: SupabaseDB
+    db: SupabaseDB,
+    early_attempt: bool = False
 ):
     """
     Process user speech with CONVERSATION INTEGRITY CHECKS
@@ -1677,6 +1877,9 @@ async def process_user_speech_fast(
     6. Response generation (scripted or LLM)
     7. TTS → Send audio with barge-in support
     8. CONTEXT HYGIENE - Only commit AI text if not interrupted
+    
+    Args:
+        early_attempt: If True, validate STT confidence before committing (Phase 1)
     """
     # ==================== DOUBLE-PROCESSING GUARD ====================
     if session._processing_speech:
@@ -1693,6 +1896,13 @@ async def process_user_speech_fast(
         
         audio_duration_ms = (len(audio_mulaw) / TWILIO_SAMPLE_RATE) * 1000
         logger.info(f"Processing {len(audio_mulaw)} bytes ({audio_duration_ms:.0f}ms) for call {session.call_id}")
+        
+        # ==================== ADAPTIVE PATTERN TRACKING (Phase 1 - DISABLED) ====================
+        # DISABLED: Was incorrectly measuring total time (including silence) not speech duration
+        # This caused feedback loop: learning force-timeout delays (10-22s) as "normal" user behavior
+        # Example: user_avg_pause_ms went 8225ms → 8747ms → 9453ms → 11294ms (all garbage data)
+        # To fix: need VAD-based speech activity measurement, not wall-clock time from speech_start
+        # logger.debug(f"📊 Adaptive learning disabled to prevent feedback loop bug")
         
         # ==================== AUDIO QUALITY GATE 1: Duration ====================
         # Very short audio is almost certainly noise/echo, don't waste STT call
@@ -1744,6 +1954,37 @@ async def process_user_speech_fast(
         stt_duration = (datetime.now() - stt_start).total_seconds() * 1000
         
         logger.info(f"📝 STT ({stt_duration:.0f}ms): '{user_text}'")
+        
+        # ==================== EARLY STT CONFIDENCE VALIDATION (Phase 1) ====================
+        # If this was an early attempt, validate quality before committing
+        if early_attempt:
+            # Check if result is meaningful enough
+            text_clean = user_text.strip()
+            word_count = len(text_clean.split())
+            
+            # Reject if too short or empty
+            if len(text_clean) < 2 or word_count < 1:
+                logger.info(f"⚠️ Early STT rejected: too short ('{text_clean}') - continuing buffering")
+                session._processing_speech = False
+                return  # Keep buffering
+            
+            # Reject common filler/noise words
+            if text_clean.lower() in ["um", "uh", "ah", "hmm", "mm", "er", "the", "a", "okay", "ok"]:
+                logger.info(f"⚠️ Early STT rejected: filler word ('{text_clean}') - continuing buffering")
+                session._processing_speech = False
+                return  # Keep buffering
+            
+            # For language selection, require specific keywords
+            if session.call_stage == CallStage.LANGUAGE_SELECT:
+                text_lower = text_clean.lower()
+                has_language = any(lang in text_lower for lang in ["hindi", "english", "marathi", "हिन्दी", "हिंदी", "मराठी"])
+                if not has_language:
+                    logger.info(f"⚠️ Early STT rejected: no language keyword ('{text_clean}') - continuing buffering")
+                    session._processing_speech = False
+                    return  # Keep buffering
+            
+            # Valid early result - proceed with processing
+            logger.info(f"✅ Early STT validated: '{text_clean}' - processing immediately")
         
         if not user_text or len(user_text.strip()) < 2:
             logger.debug("No meaningful speech detected")
@@ -1820,7 +2061,7 @@ Speak in the user's selected language consistently throughout."""
                 
                 system_prompt_with_greeting = f"{GREETING_PROMPT}\n\n{session.resolved_system_prompt}"
                 messages = [{"role": "user", "content": "Generate your opening line for this call in the user's selected language."}]
-                response_text = await llm.generate_response(messages=messages, system_prompt=system_prompt_with_greeting, max_tokens=80)
+                response_text = await llm.generate_response(messages=messages, system_prompt=system_prompt_with_greeting, max_tokens=150)
                 
                 # Send text -> TTS -> Audio
                 session.state = ConversationState.AI_SPEAKING
@@ -1853,7 +2094,7 @@ CRITICAL RULES:
                     
                     system_prompt_with_greeting = f"{GREETING_PROMPT}\n\n{session.resolved_system_prompt}"
                     messages = [{"role": "user", "content": "Generate your opening line for this call in English."}]
-                    response_text = await llm.generate_response(messages=messages, system_prompt=system_prompt_with_greeting, max_tokens=80)
+                    response_text = await llm.generate_response(messages=messages, system_prompt=system_prompt_with_greeting, max_tokens=150)
                     
                     session.state = ConversationState.AI_SPEAKING
                     await send_ai_response_with_bargein(websocket, session, response_text, tts, db, session.call_id)
@@ -2016,7 +2257,7 @@ ACTION: Acknowledge respectfully and offer to call back at a better time. Don't 
                     messages=messages,
                     system_prompt=system_prompt,
                     temperature=session.agent_config.get("temperature", 0.7),
-                    max_tokens=100  # Optimized: faster responses (was 150)
+                    max_tokens=200  # Increased for natural, complete responses
                 )
                 llm_duration = (datetime.now() - llm_start).total_seconds() * 1000
                 logger.info(f"🤖 LLM response ({llm_duration:.0f}ms): {ai_response}")
