@@ -260,11 +260,51 @@ See `.env.example` files in both frontend and backend directories.
 
 ---
 
-## 🎯 Pricing
+## 💰 Pricing
 
-- **Starter**: ₹499/month - 100 calls/month
-- **Pay As You Go**: ₹8/call - No monthly commitment
-- **Enterprise**: Custom pricing for high-volume users
+<div align="center">
+
+### Choose Your Plan - Scale As You Grow
+
+</div>
+
+| Plan | Monthly Price | Included Calls | Overage Rate | Best For |
+|------|---------------|----------------|--------------|----------|
+| 🎯 **Starter** | ₹1,999 | 200 | ₹12/call | Small businesses testing AI |
+| 🚀 **Growth** | ₹6,999 | 1,200 | ₹8/call | Growing businesses scaling |
+| 💎 **Enterprise** | ₹19,999 | 5,000 | ₹6/call | High-volume enterprises |
+| 💳 **Pay As You Go** | ₹0 | 0 | ₹15/call | Irregular calling needs |
+
+### 📊 Feature Comparison
+
+<details>
+<summary><b>Click to see detailed feature breakdown</b></summary>
+
+| Feature | Starter | Growth | Enterprise | PAYG |
+|---------|:-------:|:------:|:----------:|:----:|
+| **Included Calls/month** | 200 | 1,200 | 5,000 | 0 |
+| **Per Call Cost** | ₹10 | ₹5.8 | ₹4 | ₹15 |
+| **Knowledge Base Docs** | 10 | 50 | Unlimited | 5 |
+| **AI Customization** | Basic | Advanced | Full | Basic |
+| **Calendly Integration** | ❌ | ✅ | ✅ | ❌ |
+| **A/B Testing** | ❌ | ✅ | ✅ | ❌ |
+| **Campaign Management** | ✅ | ✅ | ✅ | Limited |
+| **Languages** | English | English + Hindi | All Indian | English |
+| **Analytics** | Basic | Advanced | Real-time + AI | Basic |
+| **API Access** | ❌ | ✅ | ✅ | ❌ |
+| **White Label** | ❌ | ❌ | ✅ | ❌ |
+| **Support** | Email (48h) | Priority (24h) | Phone + Manager | Self-service |
+| **SLA** | - | - | 99.9% | - |
+
+</details>
+
+### 💡 Why RelayX?
+
+- **10x Cheaper**: ₹6-15 per call vs ₹50-100 for human callers
+- **Infinite Scale**: Make 1000s of calls simultaneously
+- **24/7 Availability**: No breaks, holidays, or downtime
+- **Consistent Quality**: Every call follows your script perfectly
+- **Instant ROI**: Start seeing results from day 1
 
 ---
 
