@@ -75,7 +75,7 @@ async def get_dashboard_stats(
         analyses = {}
         if call_ids:
             analysis_response = db.client.table("call_analysis")\
-                .select("call_id, outcome, user_sentiment, confidence_score")\
+                .select("call_id, outcome, user_sentiment")\
                 .in_("call_id", call_ids)\
                 .execute()
             
@@ -111,10 +111,15 @@ async def get_dashboard_stats(
                 elif outcome == "not_interested":
                     not_interested_count += 1
                 
-                # Use actual confidence score if available
-                confidence = analysis.get("confidence_score")
-                if confidence and isinstance(confidence, (int, float)):
-                    confidence_sum += confidence
+                # Calculate confidence based on outcome clarity
+                if outcome in ["interested", "not_interested"]:
+                    confidence_sum += 1.0  # High confidence for clear outcomes
+                    confidence_count += 1
+                elif outcome in ["call_later", "needs_more_info"]:
+                    confidence_sum += 0.7  # Medium confidence
+                    confidence_count += 1
+                elif outcome == "other":
+                    confidence_sum += 0.3  # Low confidence
                     confidence_count += 1
         
         return {

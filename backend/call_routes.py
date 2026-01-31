@@ -77,6 +77,9 @@ async def initiate_twilio_call(call_id: str, to_number: str, db: SupabaseDB):
             status_callback=f"{gateway_url}/callbacks/status/{call_id}",
             status_callback_event=["initiated", "ringing", "answered", "completed", "busy", "no-answer", "failed", "canceled"],
             status_callback_method="POST",
+            record=True,  # Enable call recording
+            recording_status_callback=f"{gateway_url}/callbacks/recording/{call_id}",
+            recording_status_callback_method="POST",
             method="POST"  # Use POST for TwiML URL
         )
         
@@ -299,9 +302,14 @@ async def get_call_analysis(call_id: str, db: SupabaseDB = Depends(get_db)):
         if "user_sentiment" in analysis:
             analysis["sentiment"] = analysis["user_sentiment"]
         
-        # Add confidence_score if not present (default to 0.5 for neutral)
-        if "confidence_score" not in analysis:
-            analysis["confidence_score"] = 0.5
+        # Calculate confidence_score based on outcome (column doesn't exist in DB)
+        outcome = analysis.get("outcome", "").lower()
+        if outcome in ["interested", "not_interested"]:
+            analysis["confidence_score"] = 1.0  # High confidence for clear outcomes
+        elif outcome in ["call_later", "needs_more_info"]:
+            analysis["confidence_score"] = 0.7  # Medium confidence
+        else:
+            analysis["confidence_score"] = 0.5  # Default
         
         return analysis
     except HTTPException:
