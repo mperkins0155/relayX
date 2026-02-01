@@ -18,13 +18,11 @@
 
 <div align="center">
 
-**[▶️ CLICK HERE TO WATCH DEMO VIDEO](https://github.com/Gauravguddeti/relayX/raw/main/relayx-demo.mp4)**
+[![Watch RelayX Demo](https://img.youtube.com/vi/sTuMfi9Txpw/maxresdefault.jpg)](https://youtu.be/sTuMfi9Txpw)
 
-[![Watch Demo](https://img.shields.io/badge/▶️_Watch_Product_Demo-Click_Here-blue?style=for-the-badge&logo=youtube&logoColor=white)](https://github.com/Gauravguddeti/relayX/raw/main/relayx-demo.mp4)
+**[▶️ CLICK TO WATCH FULL DEMO VIDEO](https://youtu.be/sTuMfi9Txpw)**
 
 **See RelayX in Action** - Watch how AI agents handle real conversations, schedule appointments, and qualify leads automatically.
-
-*Video Size: 39.87 MB | Format: MP4*
 
 </div>
 
