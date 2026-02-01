@@ -3,13 +3,18 @@
 # 🤖 RelayX
 ### AI-Powered Voice Calling Platform at Scale
 
-[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-relayx--wine.vercel.app-blue?style=for-the-badge)](https://relayx-wine.vercel.app)
 [![API Status](https://img.shields.io/badge/🟢_API-Healthy-success?style=for-the-badge)](https://api.relayx.tech/health)
-[![Made with Love](https://img.shields.io/badge/Made_with-❤️-red?style=for-the-badge)](https://relayx-wine.vercel.app)
+[![Made with Love](https://img.shields.io/badge/Made_with-❤️-red?style=for-the-badge)](https://github.com/Gauravguddeti/relayX)
 
 **Transform your business communication with AI agents that call, qualify, and schedule at scale**
 
-[🚀 Try Demo](#-product-demo) • [📖 Documentation](#-getting-started) • [💡 Features](#-key-features) • [🛠️ Tech Stack](#️-technology-stack)
+[🎥 Watch Demo](#-product-demo) • [📖 Documentation](#-getting-started) • [💡 Features](#-key-features) • [🛠️ Tech Stack](#️-technology-stack)
+
+### 🎬 Product Showcase
+
+https://github.com/Gauravguddeti/relayX/assets/relayx-demo.mp4
+
+> **See RelayX in Action** - Watch how AI agents handle real conversations, schedule appointments, and qualify leads automatically.
 
 </div>
 
@@ -126,21 +131,7 @@ RelayX transforms business outreach by:
 
 ## 🎥 Product Demo
 
-<div align="center">
-
-### 🌟 **[Try Live Demo →](https://relayx-wine.vercel.app)** 🌟
-
-[![Demo Screenshot](https://img.shields.io/badge/🎬_Watch_Demo-Click_Here-blue?style=for-the-badge&logo=youtube)](https://relayx-wine.vercel.app)
-
-**Test Credentials:**
-```
-📧 Email: test@relayx.ai
-🔐 Password: test123
-```
-
-</div>
-
-### ✨ What You Can Try:
+### ✨ Platform Features:
 
 | Feature | Description |
 |---------|-------------|
@@ -148,7 +139,7 @@ RelayX transforms business outreach by:
 | 🤖 **AI Agent** | Configure voice agent personality and knowledge base |
 | 📞 **Campaigns** | Upload CSV and launch bulk calling campaigns |
 | 👥 **Contacts** | Manage your contact database |
-| 🎙️ **Test Call** | Make a test call to experience AI in action |
+| 🎙️ **Live Calls** | AI handles real conversations with natural language |
 
 **🔗 Backend API Health Check:** [api.relayx.tech/health](https://api.relayx.tech/health)
 
