@@ -54,7 +54,7 @@ export default function Dashboard() {
     try {
       setLoading(true);
       // Use the optimized dashboard stats endpoint
-      const response = await fetch(`/dashboard/stats`, {
+      const response = await fetch(`${API_BASE_URL}/dashboard/stats`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
         }

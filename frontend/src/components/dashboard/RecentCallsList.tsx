@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Phone, Clock, CheckCircle, XCircle, PhoneMissed, PhoneIncoming, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { API_BASE_URL } from '../../config';
 
 interface Call {
   id: string;
@@ -35,7 +36,7 @@ export default function RecentCallsList({ onRefresh }: RecentCallsListProps = {}
 
     try {
       // Fetch only current user's calls
-      const response = await fetch(`/calls?user_id=${userId}&limit=10`);
+      const response = await fetch(`${API_BASE_URL}/calls?user_id=${userId}&limit=10`);
       if (!response.ok) {
         console.error('Failed to fetch calls:', response.status);
         setCalls([]);

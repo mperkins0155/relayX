@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, Phone, User, AlertCircle } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 
 interface Event {
   id: string;
@@ -28,7 +29,7 @@ export default function UpcomingEvents() {
         return;
       }
 
-      const response = await fetch('/events/upcoming?limit=5', {
+      const response = await fetch(`${API_BASE_URL}/events/upcoming?limit=5`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

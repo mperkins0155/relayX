@@ -4,6 +4,7 @@ import { Phone, Clock, CheckCircle, XCircle, PhoneMissed, Search, Filter, Plus }
 import DashboardLayout from '../components/dashboard/DashboardLayout';
 import NewCallModal from '../components/dashboard/NewCallModal';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config';
 
 interface Call {
   id: string;
@@ -35,7 +36,7 @@ export default function Calls() {
     try {
       setLoading(true);
       // Fetch only current user's calls
-      const response = await fetch(`/calls?user_id=${userId}&limit=100`, {
+      const response = await fetch(`${API_BASE_URL}/calls?user_id=${userId}&limit=100`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
         }
