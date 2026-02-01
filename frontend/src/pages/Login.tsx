@@ -20,19 +20,11 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch('/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        login(data.user_id);
+      const success = await login(email, password);
+      if (success) {
         navigate('/dashboard');
       } else {
-        const errorData = await response.json();
-        setError(errorData.detail || 'Invalid credentials');
+        setError('Invalid email or password');
       }
     } catch (err) {
       setError('Network error. Please try again.');

@@ -3,9 +3,11 @@
 FastAPI Backend for RelayX AI Caller
 Handles API endpoints for agents, calls, and Twilio webhooks
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from twilio.rest import Client as TwilioClient
 from loguru import logger
 import os
@@ -99,6 +101,31 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add validation error handler to debug 422 errors
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Log and return validation errors for debugging"""
+    body = None
+    try:
+        body = await request.body()
+        body = body.decode('utf-8')
+    except:
+        pass
+    
+    logger.error(f"Validation error on {request.method} {request.url.path}")
+    logger.error(f"Headers: {dict(request.headers)}")
+    logger.error(f"Request body: {body}")
+    logger.error(f"Content-Type: {request.headers.get('content-type')}")
+    logger.error(f"Errors: {exc.errors()}")
+    
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": exc.errors(),
+            "body": body
+        }
+    )
 
 # Twilio client
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
