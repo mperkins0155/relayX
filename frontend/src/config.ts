@@ -1,3 +1,4 @@
-export const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? '' // Use relative URLs to go through nginx proxy
-    : 'https://api.relayx.tech';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:8000'
+        : 'https://relayx-production.up.railway.app');
