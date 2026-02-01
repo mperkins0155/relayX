@@ -1,0 +1,2 @@
+# Tell Railway to ignore Dockerfiles and use Nixpacks
+RAILWAY_DOCKERFILE_PATH=
