@@ -187,16 +187,22 @@ async def create_demo_call(
         if not agent:
             raise HTTPException(status_code=404, detail="Demo agent not found")
         
+        # Use the agent's user_id for demo calls (owner of the landing page agent)
+        demo_user_id = agent.get("user_id")
+        if not demo_user_id:
+            raise HTTPException(status_code=500, detail="Landing page agent has no user_id")
+        
         # Check Twilio
         if not twilio_client:
             raise HTTPException(status_code=500, detail="Twilio not configured")
         
-        # Create call record
+        # Create call record with demo user_id
         call_record = await db.create_call(
             agent_id=demo_agent_id,
             to_number=phone,
             from_number=TWILIO_PHONE_NUMBER,
             direction="outbound",
+            user_id=demo_user_id,
             metadata={"demo": True, "name": name, "source": "landing_page"}
         )
         
