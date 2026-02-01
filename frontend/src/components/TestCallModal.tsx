@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Phone } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { API_BASE_URL } from '../config';
 
 interface TestCallModalProps {
   isOpen: boolean;
@@ -32,11 +33,13 @@ export default function TestCallModal({ isOpen, onClose }: TestCallModalProps) {
     setResult(null);
 
     try {
-      const response = await fetch('/api/agent/test-call', {
+      // Use demo-call endpoint which uses the landing page agent
+      const response = await fetch(`${API_BASE_URL}/demo-call`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to_number: `${countryCode}${phoneNumber}`,
+          name: 'Landing Page Visitor',
+          phone: `${countryCode}${phoneNumber}`,
         }),
       });
 

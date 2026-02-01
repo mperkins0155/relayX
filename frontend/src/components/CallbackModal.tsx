@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Phone, X, Loader2 } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 interface CallbackModalProps {
   isOpen: boolean;
@@ -26,7 +27,7 @@ export default function CallbackModal({ isOpen, onClose }: CallbackModalProps) {
       }
 
       // Call backend API to trigger demo call
-      const response = await fetch('/demo-call', {
+      const response = await fetch(`${API_BASE_URL}/demo-call`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Play, Pause, Eye, Trash2, Users, Phone, TrendingUp, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../../config';
 
 interface Campaign {
   id: string;
@@ -42,7 +43,7 @@ export default function CampaignsList() {
 
   async function fetchCampaigns() {
     try {
-      const response = await fetch('/campaigns', {
+      const response = await fetch(`${API_BASE_URL}/campaigns`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
         }
@@ -62,7 +63,7 @@ export default function CampaignsList() {
   async function handleAction(campaignId: string, action: 'start' | 'pause' | 'delete') {
     setActionLoading(campaignId);
     try {
-      const endpoint = action === 'delete' ? `/campaigns/${campaignId}` : `/campaigns/${campaignId}/${action}`;
+      const endpoint = action === 'delete' ? `${API_BASE_URL}/campaigns/${campaignId}` : `${API_BASE_URL}/campaigns/${campaignId}/${action}`;
       const response = await fetch(endpoint, {
         method: action === 'delete' ? 'DELETE' : 'POST',
         headers: {

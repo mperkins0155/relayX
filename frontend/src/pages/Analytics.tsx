@@ -37,7 +37,7 @@ export default function Analytics() {
     async function fetchAnalytics() {
         try {
             setLoading(true);
-            const response = await fetch(`/analytics?days=${dateRange}`, {
+            const response = await fetch(`${API_BASE_URL}/analytics?days=${dateRange}`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
                 }

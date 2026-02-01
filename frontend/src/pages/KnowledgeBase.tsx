@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Upload, Link as LinkIcon, Trash2, FileText, ExternalLink } from 'lucide-react';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
+import { API_BASE_URL } from '../config';
 
 interface KnowledgeItem {
   id: string;
@@ -30,7 +31,7 @@ export default function KnowledgeBase() {
 
   async function fetchAgent() {
     try {
-      const response = await fetch('/agents');
+      const response = await fetch(`${API_BASE_URL}/agents`);
       if (!response.ok) {
         console.error('Failed to fetch agents:', response.status);
         setLoading(false);
@@ -53,7 +54,7 @@ export default function KnowledgeBase() {
 
   async function fetchKnowledge(id: string) {
     try {
-      const response = await fetch(`/agents/${id}/knowledge`);
+      const response = await fetch(`${API_BASE_URL}/agents/${id}/knowledge`);
       if (!response.ok) {
         console.error('Failed to fetch knowledge:', response.status);
         setKnowledge([]);
@@ -76,7 +77,7 @@ export default function KnowledgeBase() {
 
     setUrlLoading(true);
     try {
-      const response = await fetch('/knowledge/from-url', {
+      const response = await fetch(`${API_BASE_URL}/knowledge/from-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -109,7 +110,7 @@ export default function KnowledgeBase() {
     formData.append('file', files[0]);
 
     try {
-      const response = await fetch('/knowledge/upload', {
+      const response = await fetch(`${API_BASE_URL}/knowledge/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -133,7 +134,7 @@ export default function KnowledgeBase() {
     if (!confirm('Are you sure you want to delete this knowledge item?')) return;
 
     try {
-      const response = await fetch(`/knowledge/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/knowledge/${id}`, {
         method: 'DELETE',
       });
 

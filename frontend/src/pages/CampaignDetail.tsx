@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Pause, Download, Phone, CheckCircle, Clock, User, Globe, Calendar, Edit2, Check, X, Trash2, Upload, UserPlus, AlertCircle } from 'lucide-react';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
+import { API_BASE_URL } from '../config';
 
 
 interface Campaign {
@@ -80,10 +81,10 @@ export default function CampaignDetail() {
   async function fetchCampaignData() {
     try {
       const [campaignRes, contactsRes] = await Promise.all([
-        fetch(`/campaigns/${campaignId}`, {
+        fetch(`${API_BASE_URL}/campaigns/${campaignId}`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('relayx_token')}` }
         }),
-        fetch(`/campaigns/${campaignId}/contacts`, {
+        fetch(`${API_BASE_URL}/campaigns/${campaignId}/contacts`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('relayx_token')}` }
         })
       ]);
@@ -113,7 +114,7 @@ export default function CampaignDetail() {
   async function handleAction(action: 'start' | 'pause') {
     setActionLoading(true);
     try {
-      const response = await fetch(`/campaigns/${campaignId}/${action}`, {
+      const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/${action}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('relayx_token')}` }
       });
@@ -135,7 +136,7 @@ export default function CampaignDetail() {
     }
 
     try {
-      const response = await fetch(`/campaigns/${campaignId}`, {
+      const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`,
@@ -159,7 +160,7 @@ export default function CampaignDetail() {
     setDeleteSuccess('');
 
     try {
-      const response = await fetch(`/campaigns/${campaignId}`, {
+      const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
@@ -203,7 +204,7 @@ export default function CampaignDetail() {
       const formData = new FormData();
       formData.append('file', uploadFile);
 
-      const response = await fetch(`/campaigns/${campaignId}/add-contacts`, {
+      const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/add-contacts`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`

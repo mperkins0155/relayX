@@ -61,14 +61,14 @@ export default function CallDetails() {
       }
 
       // 1. Fetch Call Data
-      const callRes = await fetch(`/calls/${callId}`, { headers });
+      const callRes = await fetch(`${API_BASE_URL}/calls/${callId}`, { headers });
       if (!callRes.ok) throw new Error(`Failed to fetch call: ${callRes.status}`);
       const callData = await callRes.json();
       setCall(callData);
 
       // 2. Fetch Analysis
       try {
-        const analysisRes = await fetch(`/calls/${callId}/analysis`, { headers });
+        const analysisRes = await fetch(`${API_BASE_URL}/calls/${callId}/analysis`, { headers });
         if (analysisRes.ok) {
           const analysisData = await analysisRes.json();
           if (analysisData && analysisData.summary) {
@@ -81,7 +81,7 @@ export default function CallDetails() {
 
       // 3. Fetch Transcripts
       try {
-        const transcriptRes = await fetch(`/calls/${callId}/transcripts`, { headers });
+        const transcriptRes = await fetch(`${API_BASE_URL}/calls/${callId}/transcripts`, { headers });
         if (transcriptRes.ok) {
           const transcriptData = await transcriptRes.json();
           setTranscripts(transcriptData || []);
@@ -93,7 +93,7 @@ export default function CallDetails() {
       // 4. Fetch Recording (via Blob to handle Auth)
       try {
         // Use the new proxy endpoint we just created
-        const audioRes = await fetch(`/calls/${callId}/recording`, { headers });
+        const audioRes = await fetch(`${API_BASE_URL}/calls/${callId}/recording`, { headers });
         if (audioRes.ok) {
           const blob = await audioRes.blob();
           const objUrl = URL.createObjectURL(blob);

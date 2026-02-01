@@ -3,6 +3,7 @@ import { Plus, Play, Pause, Calendar, Trash2, Clock, Users as UsersIcon, CheckCi
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
 import CampaignCreateModal from '../components/CampaignCreateModal';
+import { API_BASE_URL } from '../config';
 
 interface Campaign {
   id: string;
@@ -44,7 +45,7 @@ export default function Campaigns() {
   async function loadCampaigns() {
     try {
       setLoading(true);
-      const response = await fetch('/campaigns', {
+      const response = await fetch(`${API_BASE_URL}/campaigns`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
         }
@@ -66,7 +67,7 @@ export default function Campaigns() {
 
   async function handleStartCampaign(campaignId: string) {
     try {
-      const response = await fetch(`/campaigns/${campaignId}/start`, {
+      const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/start`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
@@ -84,7 +85,7 @@ export default function Campaigns() {
 
   async function handlePauseCampaign(campaignId: string) {
     try {
-      const response = await fetch(`/campaigns/${campaignId}/pause`, {
+      const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/pause`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
@@ -106,7 +107,7 @@ export default function Campaigns() {
     }
 
     try {
-      const response = await fetch(`/campaigns/${campaignId}`, {
+      const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`

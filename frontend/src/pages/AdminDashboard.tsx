@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../config';
 
 interface Analytics {
   total_clients: number;
@@ -84,7 +85,7 @@ export default function AdminDashboard() {
   }, [activeLogTab]);
 
   const apiCall = async (endpoint: string) => {
-    const response = await fetch(`http://localhost:8000${endpoint}`, {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: {
         'Authorization': `Bearer ${adminToken}`,
       },

@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../config';
 
 export default function AdminLogin() {
   const [username, setUsername] = useState('');
@@ -14,7 +15,7 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/admin/login', {
+      const response = await fetch(`${API_BASE_URL}/admin/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

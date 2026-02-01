@@ -75,7 +75,7 @@ export default function NewCallModal({ isOpen, onClose, onSuccess }: NewCallModa
 
     try {
       // Fetch only current user's agents
-      const response = await fetch(`/agents?user_id=${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/agents?user_id=${userId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
         }
@@ -98,7 +98,7 @@ export default function NewCallModal({ isOpen, onClose, onSuccess }: NewCallModa
 
     try {
       // Fetch contacts from backend API
-      const response = await fetch(`/api/contacts?user_id=${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/contacts?user_id=${userId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
         }
@@ -182,7 +182,7 @@ export default function NewCallModal({ isOpen, onClose, onSuccess }: NewCallModa
         payload.scheduled_at = new Date(scheduledTime).toISOString();
       }
 
-      const response = await fetch('/calls/outbound', {
+      const response = await fetch(`${API_BASE_URL}/calls/outbound`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, ExternalLink, User, Loader, Video } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 
 interface CalBooking {
   id: number;
@@ -24,7 +25,7 @@ export default function CalendarWidget() {
 
   async function fetchCalStatus() {
     try {
-      const response = await fetch('/cal/status');
+      const response = await fetch(`${API_BASE_URL}/cal/status`);
       if (response.ok) {
         const data = await response.json();
         setCalStatus(data);
@@ -39,7 +40,7 @@ export default function CalendarWidget() {
 
   async function fetchUpcomingBookings() {
     try {
-      const response = await fetch('/cal/bookings');
+      const response = await fetch(`${API_BASE_URL}/cal/bookings`);
       if (response.ok) {
         const data = await response.json();
         setBookings(data.bookings || []);
