@@ -12,7 +12,9 @@
 
 ### 🎬 Product Showcase
 
-https://github.com/Gauravguddeti/relayX/assets/relayx-demo.mp4
+<video src="https://github.com/Gauravguddeti/relayX/raw/main/relayx-demo.mp4" controls="controls" style="max-width: 100%;">
+  Your browser does not support the video tag.
+</video>
 
 > **See RelayX in Action** - Watch how AI agents handle real conversations, schedule appointments, and qualify leads automatically.
 
