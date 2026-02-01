@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function verifyToken(token: string): Promise<boolean> {
     try {
-      const response = await fetch(`/auth/verify-token`, {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-token`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -73,8 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Temporarily bypass nginx to test if direct connection works
-      const apiUrl = 'http://localhost:8000/auth/login';
+      const apiUrl = `${API_BASE_URL}/auth/login`;
       console.log('[Auth] Attempting login with:', { email, apiUrl });
       
       const response = await fetch(apiUrl, {
