@@ -56,7 +56,7 @@ export default function Contacts() {
 
   async function fetchContacts() {
     try {
-      const response = await fetch(`${API_BASE_URL}/contacts?user_id=${userId}`, {
+      const response = await fetch(`/api/contacts?user_id=${userId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
         }
@@ -176,7 +176,7 @@ export default function Contacts() {
     if (!confirm('Are you sure you want to delete this contact?')) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/contacts/${contactId}`, {
+      const response = await fetch(`/api/contacts/${contactId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
@@ -196,7 +196,7 @@ export default function Contacts() {
 
     for (const contactId of selectedContacts) {
       try {
-        await fetch(`${API_BASE_URL}/contacts/${contactId}`, {
+        await fetch(`/api/contacts/${contactId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`

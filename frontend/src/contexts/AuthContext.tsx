@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function verifyToken(token: string): Promise<boolean> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/verify-token`, {
+      const response = await fetch(`/auth/verify-token`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -73,7 +73,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      // Temporarily bypass nginx to test if direct connection works
+      const apiUrl = 'http://localhost:8000/auth/login';
+      console.log('[Auth] Attempting login with:', { email, apiUrl });
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -81,11 +85,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password })
       });
 
+      console.log('[Auth] Login response status:', response.status);
+
       if (!response.ok) {
+        console.error('[Auth] Login failed with status:', response.status);
         return false;
       }
 
       const data = await response.json();
+      console.log('[Auth] Login response data:', { hasToken: !!data.access_token, hasUser: !!data.user });
 
       if (data.access_token && data.user) {
         const userData = {
@@ -97,9 +105,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData);
         localStorage.setItem('relayx_user', JSON.stringify(userData));
         localStorage.setItem('relayx_token', data.access_token);
+        console.log('[Auth] Login successful, user data saved');
         return true;
       }
 
+      console.error('[Auth] Login response missing token or user');
       return false;
     } catch (error) {
       console.error('Login error:', error);
