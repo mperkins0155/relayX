@@ -18,11 +18,9 @@
 
 <div align="center">
 
-[![Watch RelayX Demo](https://img.youtube.com/vi/sTuMfi9Txpw/maxresdefault.jpg)](https://youtu.be/sTuMfi9Txpw)
+[![RelayX Demo - AI Voice Calling Platform](https://img.youtube.com/vi/sTuMfi9Txpw/maxresdefault.jpg)](https://youtu.be/sTuMfi9Txpw "Click to watch RelayX in action")
 
-**[▶️ CLICK TO WATCH FULL DEMO VIDEO](https://youtu.be/sTuMfi9Txpw)**
-
-**See RelayX in Action** - Watch how AI agents handle real conversations, schedule appointments, and qualify leads automatically.
+*See RelayX in Action - Watch how AI agents handle real conversations, schedule appointments, and qualify leads automatically.*
 
 </div>
 
