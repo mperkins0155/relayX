@@ -10,13 +10,21 @@
 
 [🎥 Watch Demo](#-product-demo) • [📖 Documentation](#-getting-started) • [💡 Features](#-key-features) • [🛠️ Tech Stack](#️-technology-stack)
 
-### 🎬 Product Showcase
+</div>
 
-**[▶️ CLICK HERE TO WATCH DEMO VIDEO](./relayx-demo.mp4)**
+---
 
-[![Watch Demo](https://img.shields.io/badge/▶️_Watch_Product_Demo-Click_Here-blue?style=for-the-badge&logo=youtube&logoColor=white)](./relayx-demo.mp4)
+## 🎬 Product Demo Video
 
-> **See RelayX in Action** - Watch how AI agents handle real conversations, schedule appointments, and qualify leads automatically. *(39.87 MB MP4 Video)*
+<div align="center">
+
+**[▶️ CLICK HERE TO WATCH DEMO VIDEO](https://github.com/Gauravguddeti/relayX/raw/main/relayx-demo.mp4)**
+
+[![Watch Demo](https://img.shields.io/badge/▶️_Watch_Product_Demo-Click_Here-blue?style=for-the-badge&logo=youtube&logoColor=white)](https://github.com/Gauravguddeti/relayX/raw/main/relayx-demo.mp4)
+
+**See RelayX in Action** - Watch how AI agents handle real conversations, schedule appointments, and qualify leads automatically.
+
+*Video Size: 39.87 MB | Format: MP4*
 
 </div>
 
@@ -131,9 +139,7 @@ RelayX transforms business outreach by:
 
 ---
 
-## 🎥 Product Demo
-
-### ✨ Platform Features:
+## 🎥 Platform Features
 
 | Feature | Description |
 |---------|-------------|
