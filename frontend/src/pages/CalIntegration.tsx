@@ -85,7 +85,7 @@ export default function CalIntegration() {
     }
 
     try {
-      const response = await fetch('/cal/create-link', {
+      const response = await fetch(`${API_BASE_URL}/cal/create-link`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -123,7 +123,7 @@ export default function CalIntegration() {
     }
 
     // Generate link first
-    const linkResponse = await fetch('/cal/create-link', {
+    const linkResponse = await fetch(`${API_BASE_URL}/cal/create-link`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -149,7 +149,7 @@ export default function CalIntegration() {
         phoneNumber = '+' + phoneNumber;
       }
 
-      const response = await fetch('/cal/send-link-sms', {
+      const response = await fetch(`${API_BASE_URL}/cal/send-link-sms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

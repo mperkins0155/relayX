@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Save, Plus, Edit, Trash2, Bot, LayoutGrid, List as ListIcon } from 'lucide-react';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config';
 import { AgentKanbanBoard, type AgentColumn } from '../components/ui/AgentKanbanBoard';
 
 interface Agent {
@@ -439,7 +440,7 @@ export default function AgentSettings() {
 
   async function fetchAgents() {
     try {
-      const response = await fetch(`/agents?user_id=${userId}`);
+      const response = await fetch(`${API_BASE_URL}/agents?user_id=${userId}`);
       if (!response.ok) {
         setLoading(false);
         return;
@@ -601,7 +602,7 @@ export default function AgentSettings() {
 
       if (view === 'create') {
         // Create new agent
-        const response = await fetch('/agents', {
+        const response = await fetch(`${API_BASE_URL}/agents`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -621,7 +622,7 @@ export default function AgentSettings() {
         setMessage({ type: 'success', text: 'Agent created successfully!' });
       } else {
         // Update existing agent
-        const response = await fetch(`/agents/${selectedAgent?.id}`, {
+        const response = await fetch(`${API_BASE_URL}/agents/${selectedAgent?.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -657,7 +658,7 @@ export default function AgentSettings() {
     if (!confirm('Are you sure you want to delete this agent?')) return;
 
     try {
-      const response = await fetch(`/agents/${agentId}`, {
+      const response = await fetch(`${API_BASE_URL}/agents/${agentId}`, {
         method: 'DELETE',
       });
 
@@ -704,7 +705,7 @@ Remember: Your goal is to help customers and represent ${companyName} profession
     const newIsActive = toColumnId === 'active';
     
     try {
-      const response = await fetch(`/agents/${agentId}`, {
+      const response = await fetch(`${API_BASE_URL}/agents/${agentId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

@@ -108,6 +108,12 @@ async def verify_session(session: dict = Depends(verify_admin_token)):
     return {"success": True, "username": session["username"]}
 
 
+@router.post("/verify-session")
+async def verify_session_post(session: dict = Depends(verify_admin_token)):
+    """Verify active session (POST method for frontend protection)"""
+    return {"success": True, "username": session["username"]}
+
+
 @router.post("/logout")
 async def admin_logout(session: dict = Depends(verify_admin_token)):
     """Logout endpoint"""

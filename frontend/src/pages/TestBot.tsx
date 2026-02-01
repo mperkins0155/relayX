@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Phone, AlertCircle, CheckCircle, Loader, Users } from 'lucide-react';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
+import { API_BASE_URL } from '../config';
 
 interface Contact {
   id: string;
@@ -58,7 +59,7 @@ export default function TestBot() {
 
   async function fetchAgent() {
     try {
-      const response = await fetch('/agents');
+      const response = await fetch(`${API_BASE_URL}/agents`);
       const agents = await response.json();
       if (agents.length > 0) {
         setAgentId(agents[0].id);
@@ -122,7 +123,7 @@ export default function TestBot() {
     setResult(null);
 
     try {
-      const response = await fetch('/calls/outbound', {
+      const response = await fetch(`${API_BASE_URL}/calls/outbound`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

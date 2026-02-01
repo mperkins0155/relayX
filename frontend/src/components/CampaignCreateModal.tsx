@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Upload, FileText, AlertCircle, Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config';
 
 interface Agent {
   id: string;
@@ -51,7 +52,7 @@ export default function CampaignCreateModal({ isOpen, onClose, onSuccess }: Camp
     if (!userId) return;
 
     try {
-      const response = await fetch(`/agents?user_id=${userId}&is_active=true`, {
+      const response = await fetch(`${API_BASE_URL}/agents?user_id=${userId}&is_active=true`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
         }
@@ -124,7 +125,7 @@ export default function CampaignCreateModal({ isOpen, onClose, onSuccess }: Camp
       const formDataObj = new FormData();
       formDataObj.append('file', file);
 
-      const response = await fetch('/campaigns/parse-preview', {
+      const response = await fetch(`${API_BASE_URL}/campaigns/parse-preview`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
@@ -180,7 +181,7 @@ export default function CampaignCreateModal({ isOpen, onClose, onSuccess }: Camp
 
       formDataObj.append('settings', JSON.stringify(settings));
 
-      const response = await fetch('/campaigns/create', {
+      const response = await fetch(`${API_BASE_URL}/campaigns/create`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`

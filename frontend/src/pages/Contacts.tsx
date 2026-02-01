@@ -56,7 +56,7 @@ export default function Contacts() {
 
   async function fetchContacts() {
     try {
-      const response = await fetch(`/api/contacts?user_id=${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/contacts?user_id=${userId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
         }
@@ -90,7 +90,7 @@ export default function Contacts() {
     try {
       const fullPhone = countryCode + newContact.phone;
 
-      const response = await fetch('/api/contacts', {
+      const response = await fetch(`${API_BASE_URL}/api/contacts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -138,7 +138,7 @@ export default function Contacts() {
     formData.append('user_id', userId || '');
 
     try {
-      const response = await fetch('/api/contacts/upload', {
+      const response = await fetch(`${API_BASE_URL}/api/contacts/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
@@ -176,7 +176,7 @@ export default function Contacts() {
     if (!confirm('Are you sure you want to delete this contact?')) return;
 
     try {
-      const response = await fetch(`/api/contacts/${contactId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/contacts/${contactId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
@@ -196,7 +196,7 @@ export default function Contacts() {
 
     for (const contactId of selectedContacts) {
       try {
-        await fetch(`/api/contacts/${contactId}`, {
+        await fetch(`${API_BASE_URL}/api/contacts/${contactId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`

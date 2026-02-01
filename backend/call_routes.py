@@ -160,6 +160,7 @@ async def create_outbound_call(
 
 
 @router.post("/api/demo-call")
+@router.post("/demo-call")
 async def create_demo_call(
     request: dict,
     background_tasks: BackgroundTasks,

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { CreditCard, Check, Zap, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
+import { API_BASE_URL } from '../config';
 
 interface UsageStats {
     total_calls: number;
@@ -36,7 +37,7 @@ const Billing = () => {
 
     const fetchUsage = async () => {
         try {
-            const response = await fetch('/api/usage', {
+            const response = await fetch(`${API_BASE_URL}/api/usage`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('relayx_token')}`
                 }
