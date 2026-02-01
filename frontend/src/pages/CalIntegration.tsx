@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Calendar, Send, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 interface CalStatus {
   configured: boolean;
@@ -50,7 +51,7 @@ export default function CalIntegration() {
 
   const checkStatus = async () => {
     try {
-      const response = await fetch('/cal/status');
+      const response = await fetch(`${API_BASE_URL}/cal/status`);
       const data = await response.json();
       setStatus(data);
 
