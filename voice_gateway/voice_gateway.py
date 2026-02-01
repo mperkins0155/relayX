@@ -2581,34 +2581,45 @@ async def startup_event():
     logger.info("Starting RelayX Voice Gateway v2.0 (Vapi-style architecture)...")
     logger.info("Features: VAD edge-trigger, barge-in support, intent pre-classification")
     
-    # Start ngrok tunnel automatically
+    # Auto-detect and update Cloudflare tunnel URL
     try:
-        import subprocess
-        import requests
-        import time
-        
-        logger.info("Starting ngrok tunnel on port 8001...")
-        
-        subprocess.Popen(
-            ["ngrok", "http", "8001", "--log=stdout"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-        
-        time.sleep(3)
-        
-        response = requests.get("http://localhost:4040/api/tunnels")
-        tunnels = response.json()["tunnels"]
-        
-        if tunnels:
-            ngrok_public_url = tunnels[0]["public_url"]
-            logger.info(f"✅ Ngrok tunnel ready: {ngrok_public_url}")
-        else:
-            logger.warning("⚠️ Ngrok started but no tunnels found")
-            
+        from tunnel_utils import auto_detect_and_update_tunnel_url
+        detected_url = auto_detect_and_update_tunnel_url()
+        if detected_url:
+            ngrok_public_url = detected_url
+            logger.info(f"✅ Using Cloudflare tunnel: {detected_url}")
     except Exception as e:
-        logger.warning(f"Could not start ngrok automatically: {e}")
-        logger.info("You can start ngrok manually: ngrok http 8001")
+        logger.warning(f"Could not auto-detect Cloudflare URL: {e}")
+    
+    # Start ngrok tunnel automatically (fallback)
+    if not ngrok_public_url:
+        try:
+            import subprocess
+            import requests
+            import time
+            
+            logger.info("Starting ngrok tunnel on port 8001...")
+            
+            subprocess.Popen(
+                ["ngrok", "http", "8001", "--log=stdout"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            
+            time.sleep(3)
+            
+            response = requests.get("http://localhost:4040/api/tunnels")
+            tunnels = response.json()["tunnels"]
+            
+            if tunnels:
+                ngrok_public_url = tunnels[0]["public_url"]
+                logger.info(f"✅ Ngrok tunnel ready: {ngrok_public_url}")
+            else:
+                logger.warning("⚠️ Ngrok started but no tunnels found")
+                
+        except Exception as e:
+            logger.warning(f"Could not start ngrok automatically: {e}")
+            logger.info("You can start ngrok manually: ngrok http 8001")
     
     logger.info("✅ WebRTC VAD ready (Mode 3 aggressive, 180ms speech start, 700ms speech end) + Force-process @4s")
     
